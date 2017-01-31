@@ -1,0 +1,22 @@
+{
+  "name": "connect_wrapper",
+  "version": "1.0.0",
+  "description": "Simple methods for handling connections to remote mongodb installation",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rranauro/connect_wrapper.git"
+  },
+  "keywords": [
+    "MongoDB"
+  ],
+  "author": "Ron Ranauro",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/rranauro/connect_wrapper/issues"
+  },
+  "homepage": "https://github.com/rranauro/connect_wrapper#readme"
+}
