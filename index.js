@@ -2,25 +2,108 @@
 /*global _: true, Basepath: true, Boxspring: true, start: true, toJSON: true, getRow: true, send: true */
 
 "use strict";
-
-// We need to keep this "server-side" file independet of frontend side
-// maybe pre-processing this file with grunt
-var config = require('../frontend/config.js');
-
-var MongoClient = require('mongodb').MongoClient;
-
-// this is the configuration relative to localhost:3000
-var dbengine = config.getEnvConf('database');
-var dbconfig =  config.getEnvConf('dbconfig')[dbengine];
-
 var _ = require('underscore')._
+var MongoClient = require('mongodb').MongoClient;
+var assert = require('assert');
 
-// test if we are running as a Node.js process
-, isNode = (typeof process !== 'undefined' && process.argv) ? true : false
-, uuid = require('node-uuid').v1
-, async = require('async');
+var ConnectWrapper = function(MONGO_URI) {
+	this.url = MONGO_URI
+	return this;
+}
 
-_.mixin( require('base-utils') );
+ConnectWrapper.prototype.create = function( collection ) {
+	return _.bind(function(req, res, next) {
+		
+		MongoClient.connect( this.url, function(err, db) {
+			assert.equal(err, null);
+			
+			db.collection( collection )[_.isArray(req.body) ? 'insertMany' : 'insertOne']( req.body, function(err, result) {
+				assert.equal(err, null);
+				assert.equal(_.isArray(req.body) ? req.body.length : 1, result.insertedCount);
+				db.close();
+				next();
+			})
+		});
+	}, this);
+};
+
+ConnectWrapper.prototype.read = function( collection ) {
+	return _.bind(function(req, res, next) {
+		
+		MongoClient.connect( this.url, function(err, db) {
+			assert.equal(err, null);
+
+			if (req.param && req.params.id) {
+				db.collection( collection ).findOne( req.params.id, function(err, result) {
+					assert.equal(err, null);
+					db.close();
+					next();
+				})				
+			} else {
+				db.collection( collection ).find( req.query || {}).toArray(function(err, result) {
+					assert.equal(err, null);
+					db.close();
+					next(null, result);
+				});
+			}
+
+		});
+	}, this);
+};
+
+ConnectWrapper.prototype.readAll = function( collection ) {
+	return _.bind(function(req, res, next) {
+		
+		MongoClient.connect( this.url, function(err, db) {
+			assert.equal(err, null);
+
+			db.collection( collection ).findOne( req.query, function(err, result) {
+				assert.equal(err, null);
+				db.close();
+				next();
+			})
+		});
+	}, this);
+};
+
+ConnectWrapper.prototype.drop = function( collection ) {
+	return _.bind(function(req, res, next) {
+		
+		MongoClient.connect( this.url, function(err, db) {
+			assert.equal(err, null);
+
+			db.collection( collection ).drop( function(err, result) {
+				db.close();
+				if (err) {
+					return next({statusCode: 400, error: err.name, reason: err.message});
+				}
+				next();
+			});
+		});
+	}, this);
+};
+
+ConnectWrapper.prototype.view = function( collection ) {
+	return _.bind(function(req, res, next) {
+		
+		MongoClient.connect( this.url, function(err, db) {
+			assert.equal(err, null);
+
+			db.collection( collection ).createIndex(req.body, function(err, result) {
+				assert.equal(err, null);
+				db.close();
+				next();
+			});
+		});
+	}, this);
+};
+
+
+exports.connectWrapper = function(URI) {
+	return new ConnectWrapper(URI);
+};
+exports.ConnectWrapper = ConnectWrapper;
+
 
 
 var mapRoles = function(roles) {
@@ -36,7 +119,7 @@ var connectUrl = function(req) {
 	}, dbconfig));
 }
 
-exports.authenticate = function(req, res, callback) {
+var authenticate = function(req, res, callback) {
 	var user
 	, password;
 
@@ -114,7 +197,7 @@ exports.authenticate = function(req, res, callback) {
 	});
 };
 
-exports.logout = function(req, res, callback) {
+var logout = function(req, res, callback) {
 
 	if (!req.session.authenticated || !req.session.userName || !req.session.passWord) {
 		return res.status( 200 ).json({ok: false});
@@ -158,47 +241,34 @@ var findOneAndUpdate = function(db, collectionName, doc, callback) {
 			});
 };
 
-exports.updateDoc = function(req, res) {
+var updateDoc = function(req, res) {
 	return function(collectionName, doc, callback) {
 		callback = callback || function(err, result) {
-			exports.sendHeader(req, res, { "Content-Type" : "application/json" });
-			exports.sendData(req, res)(err, err || {ok: true});
+			sendHeader(req, res, { "Content-Type" : "application/json" });
+			sendData(req, res)(err, err || {ok: true});
 		};
 
-
-		if (isNode) {
-
-			if (!_.isString(collectionName)) {
-				collectionName = 'notype';
-			}
-
-			// Connection URL
-			// Use connect method to connect to the Server
-			return MongoClient.connect(connectUrl(req), function(err, db) {
-				if (err) {
-					throw new Error('mongodb failed to connect.');
-				}
-
-				if (req.method === 'POST') {
-					return db.collection( collectionName ).insertOne(checkId(doc), function() {
-						callback.apply(null, arguments);
-						db.close()
-					});
-				}
-				
-				findOneAndUpdate(db, collectionName, doc, callback);
-			});
+		if (!_.isString(collectionName)) {
+			collectionName = 'notype';
 		}
 
-		// if we're CouchDB, return the doc in the first index and the response object in the second;
-		return [ doc, {
-			'headers' : {
-				'Content-Type' : 'application/json'
-			},
-			'body' : JSON.stringify({ok: true})
-		} ];
-	};
+		// Connection URL
+		// Use connect method to connect to the Server
+		return MongoClient.connect(connectUrl(req), function(err, db) {
+			if (err) {
+				throw new Error('mongodb failed to connect.');
+			}
 
+			if (req.method === 'POST') {
+				return db.collection( collectionName ).insertOne(checkId(doc), function() {
+					callback.apply(null, arguments);
+					db.close()
+				});
+			}
+			
+			findOneAndUpdate(db, collectionName, doc, callback);
+		});
+	};
 };
 
 var insertMany = function(collectionName, docs, callback) {
@@ -214,7 +284,7 @@ var insertMany = function(collectionName, docs, callback) {
 	});
 };
 
-exports.bulkDocs = function(req, res) {
+var bulkDocs = function(req, res) {
 	return function(collectionName, docs) {
 		var now = Date.now();
 
@@ -258,49 +328,30 @@ exports.bulkDocs = function(req, res) {
 			if (_.isFunction(res)) {
 				return res(err, {ok: !err, saved: docs.length, elapsed: (Date.now()-now)/1000})
 			}
-			exports.sendHeader(req, res, { "Content-Type" : "application/json" });
-			exports.sendData(req, res)(err, {ok: !err, saved: docs.length, elapsed: (Date.now()-now)/1000});
+			sendHeader(req, res, { "Content-Type" : "application/json" });
+			sendData(req, res)(err, {ok: !err, saved: docs.length, elapsed: (Date.now()-now)/1000});
 		});
 	}
 };
 
-exports.sendHeader = function(req, res, header) {
-	if (isNode) {
-		return res.set( header );
-	}
-
-	start({"headers": _.reduce(header, function(result, value, key) {
-		if (_.isObject(value)) {
-			result[key] = JSON.stringify(value);
-		}
-		return result;
-	}, header)});
+var sendHeader = function(req, res, header) {
+	return res.set( header );
 };
 
-exports.sendData = function(req, res) {
+var sendData = function(req, res) {
 	return function(err, data) {
-		if (isNode) {
-			return res.status(err ? 500 : 200 ).json( err ? {ok: false, error: err.name, reason: err.message} : data );
-		}
-		send( JSON.stringify( data ) );
+		return res.status(err ? 500 : 200 ).json( err ? {ok: false, error: err.name, reason: err.message} : data );
 	};
 };
 
-exports.sendDoc = function(req, res) {
+var sendDoc = function(req, res) {
 	return function(err, doc) {
-		if (isNode) {
-			exports.sendHeader(req, res, { "Content-Type" : "application/json" });
-			return exports.sendData(req, res)(err, doc);
-		}
-
-		return {
-			'headers' : { "Content-Type" : "application/json" },
-			'body' : _.isString( doc ) ? doc : JSON.stringify( doc )
-		};
+		sendHeader(req, res, { "Content-Type" : "application/json" });
+		return sendData(req, res)(err, doc);
 	};
 };
 
-exports.getData = function(collectionName, select, options, callback) {
+var getData = function(collectionName, select, options, callback) {
 	var docs = []
 	, row
 	, matcher = function(doc) {
@@ -355,11 +406,11 @@ exports.getData = function(collectionName, select, options, callback) {
 		});
 };
 
-exports.getPage = function(collection, select, query, callback) {
+var getPage = function(collection, select, query, callback) {
 	var page = parseInt( (query && query.page), 10 ) || 0
 	, pageSize = query && query.hasOwnProperty('page') ? (parseInt(query.pageSize, 10) || 10) : undefined;
 
-	exports.getData(collection, select, function(err, docs) {
+	getData(collection, select, function(err, docs) {
 		var last_page;
 		if (!err && pageSize) {
 			last_page = (docs.length <= (page*pageSize)+pageSize);
@@ -434,7 +485,7 @@ var mongoSecurityRoles = function(name) {
 	]);
 };
 
-exports.initDb = function(req, res) {
+var initDb = function(req, res) {
 	
 	if (dbengine === 'mongo') {
 		
@@ -468,7 +519,7 @@ exports.initDb = function(req, res) {
 };
 
 
-exports.addUser = function(req, res) {
+var addUser = function(req, res) {
 	return function(username, password, roles) {
 		var data = _.pick(req.body || {}, 'first_name', 'last_name', 'user')
 		, db = req.session && req.session.db || dbconfig && dbconfig.name || 'basepath_dev';
@@ -547,7 +598,7 @@ var getUser = function(req) {
 	}
 };
 
-exports.dropUser = function(req, res, callback) {
+var dropUser = function(req, res, callback) {
 
 	return MongoClient.connect(connectUrl(), function(err, db) {
 		db.removeUser(req.body.user || req.query.user, null, function(err, result) {
@@ -561,14 +612,14 @@ exports.dropUser = function(req, res, callback) {
 	});
 };
 
-exports.updatePassword = function(req, res) {
+var updatePassword = function(req, res) {
 	
 	// get the user document
 	return getUser(req, res)(req.body.user, function(err, docs) {
 		var doc = _.first(docs);
 	
 		// drop the user
-		exports.dropUser(req, res, function(err, result) {
+		dropUser(req, res, function(err, result) {
 			if (err) {
 				return res.status( 500 ).json({error: err.name, reason: err.message});
 			}
@@ -581,12 +632,12 @@ exports.updatePassword = function(req, res) {
 			
 		
 			// add back the user with the new password;
-			exports.addUser(req, res)(req.body.user, req.body.password, req.body.roles);
+			addUser(req, res)(req.body.user, req.body.password, req.body.roles);
 		})
 	})
 };
 
-exports.updateUser = function(req, res) {
+var updateUser = function(req, res) {
 	var newRoles = _.map(req.body.roles || [], function(role) { return({role: role, db: req.session && req.session.db}) });
 		
 	if (req.session.roles.indexOf('admin') !== -1 || req.session.userName === req.body.user) {
@@ -596,33 +647,20 @@ exports.updateUser = function(req, res) {
 			doc.customData = _.omit(req.body, 'password', 'roles', 'user');
 			doc.roles = newRoles;
 			
-			return exports.dropUser(req, res, function(err, result) {
+			return dropUser(req, res, function(err, result) {
 				if (err) {
 					res.status( 500 ).json({error: 'server_error', reason: 'unable to remove user'});
 				}
-<<<<<<< HEAD
-		
-				db.collection('users').find().toArray(function(err, docs) {
-					findOneAndUpdate(db, 'users', doc, function(err, result) {
-						res.status(err ? 500 : 201).json({ok: true});
-						db.close();
-					});								
-				});
-=======
-				exports.addUser(req, res)(req.body.user, req.body.password, newRoles);
->>>>>>> label
+				addUser(req, res)(req.body.user, req.body.password, newRoles);
 			});
 		});
 	} 
 	res.status( 403 ).json({error: 'forbidden', reason: 'unauthorized'});
 };
 
-exports.allUsers = function(req, res) {
+var allUsers = function(req, res) {
 	return getUser(req, res)(null, function(err, docs) {
 		res.status(err ? 500 : 200).json( err ? {error: 'failed', reason: err.message} : docs );
 	});
 };
-
-
-
 
