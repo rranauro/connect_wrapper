@@ -15,14 +15,36 @@ ConnectWrapper.prototype.create = function( collection ) {
 	return _.bind(function(req, res, next) {
 		
 		MongoClient.connect( this.url, function(err, db) {
-			assert.equal(err, null);
+			
+			if (err) {
+				return next(err);
+			}
 			
 			db.collection( collection )[_.isArray(req.body) ? 'insertMany' : 'insertOne']( req.body, function(err, result) {
-				assert.equal(err, null);
-				assert.equal(_.isArray(req.body) ? req.body.length : 1, result.insertedCount);
+				if (err) {
+					return next(err); 
+				}
 				db.close();
 				next();
-			})
+			});
+		});
+	}, this);
+};
+
+ConnectWrapper.prototype.update = function( collection ) {
+	return _.bind(function(req, res, next) {
+		
+		MongoClient.connect( this.url, function(err, db) {
+			if (err) {
+				return next(err);
+			}			
+			db.collection( collection ).updateOne( {_id: req.params.id}, {$set: req.query}, function(err, result) {
+				if (err) {
+					return next(err);
+				}
+				db.close();
+				next(null, result);
+			});
 		});
 	}, this);
 };
@@ -31,17 +53,22 @@ ConnectWrapper.prototype.read = function( collection ) {
 	return _.bind(function(req, res, next) {
 		
 		MongoClient.connect( this.url, function(err, db) {
-			assert.equal(err, null);
-
+			if (err) {
+				return next(err);
+			}
 			if (req.param && req.params.id) {
 				db.collection( collection ).findOne( req.params.id, function(err, result) {
-					assert.equal(err, null);
+					if (err) {
+						return next(err);
+					}
 					db.close();
 					next();
 				})				
 			} else {
 				db.collection( collection ).find( req.query || {}).toArray(function(err, result) {
-					assert.equal(err, null);
+					if (err) {
+						return next(err);
+					}
 					db.close();
 					next(null, result);
 				});
@@ -55,10 +82,13 @@ ConnectWrapper.prototype.readAll = function( collection ) {
 	return _.bind(function(req, res, next) {
 		
 		MongoClient.connect( this.url, function(err, db) {
-			assert.equal(err, null);
-
+			if (err) {
+				return next(err);
+			}
 			db.collection( collection ).findOne( req.query, function(err, result) {
-				assert.equal(err, null);
+				if (err) {
+					return next(err);
+				}
 				db.close();
 				next();
 			})
@@ -70,8 +100,9 @@ ConnectWrapper.prototype.drop = function( collection ) {
 	return _.bind(function(req, res, next) {
 		
 		MongoClient.connect( this.url, function(err, db) {
-			assert.equal(err, null);
-
+			if (err) {
+				return next(err);
+			}
 			db.collection( collection ).drop( function(err, result) {
 				db.close();
 				if (err) {
@@ -87,10 +118,13 @@ ConnectWrapper.prototype.view = function( collection ) {
 	return _.bind(function(req, res, next) {
 		
 		MongoClient.connect( this.url, function(err, db) {
-			assert.equal(err, null);
-
+			if (err) {
+				return next(err);
+			}
 			db.collection( collection ).createIndex(req.body, function(err, result) {
-				assert.equal(err, null);
+				if (err) {
+					return next(err);
+				}
 				db.close();
 				next();
 			});
