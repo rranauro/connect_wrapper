@@ -11,6 +11,11 @@ var ConnectWrapper = function(MONGO_URI) {
 	return this;
 }
 
+ConnectWrapper.prototype.auth = function(req, res, next) {
+	MongoClient.connect( this.url, next);
+	return this;
+};
+
 ConnectWrapper.prototype.create = function( collection ) {
 	return _.bind(function(req, res, next) {
 		
@@ -53,6 +58,9 @@ ConnectWrapper.prototype.read = function( collection ) {
 	return _.bind(function(req, res, next) {
 		
 		MongoClient.connect( this.url, function(err, db) {
+			var query
+			, limit = (req.query && req.query.limit) || 0;
+			
 			if (err) {
 				return next(err);
 			}
@@ -63,17 +71,24 @@ ConnectWrapper.prototype.read = function( collection ) {
 					}
 					db.close();
 					next();
-				})				
+				})
+			} else if ((req.method || 'GET').toUpperCase() === 'GET') {
+				query = req.query;
 			} else {
-				db.collection( collection ).find( req.query || {}).toArray(function(err, result) {
-					if (err) {
-						return next(err);
-					}
-					db.close();
-					next(null, result);
-				});
+				query = req.body;
 			}
-
+			
+			if (limit) {
+				limit = parseInt( query.limit, 10);	
+				delete query.limit;		
+			}
+			db.collection( collection ).find( query || {}).limit( limit ).toArray(function(err, result) {
+				if (err) {
+					return next(err);
+				}
+				db.close();
+				next(null, result);
+			});
 		});
 	}, this);
 };
