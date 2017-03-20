@@ -59,11 +59,13 @@ ConnectWrapper.prototype.read = function( collection ) {
 		
 		MongoClient.connect( this.url, function(err, db) {
 			var query
-			, limit = (req.query && req.query.limit) || 0;
+			, limit = (req.query && req.query.limit) || 0
+			, $project = req.$project || {};
 			
 			if (err) {
 				return next(err);
 			}
+			
 			if (req.param && req.params.id) {
 				db.collection( collection ).findOne( req.params.id, function(err, result) {
 					if (err) {
@@ -82,12 +84,12 @@ ConnectWrapper.prototype.read = function( collection ) {
 				limit = parseInt( query.limit, 10);	
 				delete query.limit;		
 			}
-			db.collection( collection ).find( query || {}).limit( limit ).toArray(function(err, result) {
+			db.collection( collection ).find( query || {}, $project, function(err, result) {
 				if (err) {
 					return next(err);
 				}
 				db.close();
-				next(null, result);
+				next( null, result.limit( limit ).toArray() );
 			});
 		});
 	}, this);
@@ -121,7 +123,7 @@ ConnectWrapper.prototype.drop = function( collection ) {
 			db.collection( collection ).drop( function(err, result) {
 				db.close();
 				if (err) {
-					return next({statusCode: 400, error: err.name, reason: err.message});
+					return next(err, {statusCode: 400, error: err.name, reason: err.message});
 				}
 				next();
 			});
