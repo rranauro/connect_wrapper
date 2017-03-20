@@ -84,12 +84,12 @@ ConnectWrapper.prototype.read = function( collection ) {
 				limit = parseInt( query.limit, 10);	
 				delete query.limit;		
 			}
-			db.collection( collection ).find( query || {}, $project, function(err, result) {
+			db.collection( collection ).find( query || {}).limit( limit ).project( $project ).toArray(function(err, result) {
 				if (err) {
 					return next(err);
 				}
 				db.close();
-				next( null, result.limit( limit ).toArray() );
+				next( null, result );
 			});
 		});
 	}, this);
