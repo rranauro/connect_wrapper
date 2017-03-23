@@ -6,8 +6,17 @@ var _ = require('underscore')._
 var MongoClient = require('mongodb').MongoClient;
 var assert = require('assert');
 
-var ConnectWrapper = function(MONGO_URI) {
-	this.url = MONGO_URI
+var ConnectWrapper = function(auth, uri_template) {
+	auth = auth ? auth.split(' ') : '';   
+    var plain_auth = new Buffer(auth[1], 'base64'); 			// create a buffer and tell it the data coming in is base64
+    
+	plain_auth = plain_auth.toString().split(':');        	// read it back out as a string
+	this.url = _.template(uri_template)({
+		username: plain_auth[0],
+		password: plain_auth[1]
+	});
+	
+	// this.url = MONGO_URI
 	return this;
 }
 
@@ -150,8 +159,8 @@ ConnectWrapper.prototype.view = function( collection ) {
 };
 
 
-exports.connectWrapper = function(URI) {
-	return new ConnectWrapper(URI);
+exports.connectWrapper = function(auth, URI) {
+	return new ConnectWrapper(auth, URI);
 };
 exports.ConnectWrapper = ConnectWrapper;
 
