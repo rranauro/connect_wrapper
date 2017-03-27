@@ -5,6 +5,7 @@
 var _ = require('underscore')._
 var MongoClient = require('mongodb').MongoClient;
 var assert = require('assert');
+var pool = {};
 
 var ConnectWrapper = function(auth, uri_template) {
 	auth = auth ? auth.split(' ') : '';   
@@ -15,146 +16,91 @@ var ConnectWrapper = function(auth, uri_template) {
 		username: plain_auth[0],
 		password: plain_auth[1]
 	});
+	this._username = plain_auth[0];
+	if (pool[plain_auth[0]]) {
+		if (Date.now() - pool[plain_auth[0]].now < 600000) {
+			this._db = pool[plain_auth[0]].db;
+		} else if (pool[plain_auth[0]]) {
+			this._db && this._db.close();
+			delete this._db;
+			delete pool[plain_auth[0]];
+		}
+	}
 	
 	// this.url = MONGO_URI
 	return this;
-}
+};
 
 ConnectWrapper.prototype.auth = function(req, res, next) {
-	MongoClient.connect( this.url, next);
+	var self = this;
+	
+
+	if (!this._db) {
+		MongoClient.connect( this.url, function(err, db) {
+			if (err) {
+				return next(err);
+			}
+			self._db = db;
+			pool[self._username] = {now: Date.now(), db: db};
+			next();
+		});
+	} else {
+		process.nextTick( function() { next(); });
+	}
 	return this;
 };
 
 ConnectWrapper.prototype.create = function( collection ) {
-	return _.bind(function(req, res, next) {
-		
-		MongoClient.connect( this.url, function(err, db) {
-			
-			if (err) {
-				return next(err);
-			}
-			
-			db.collection( collection )[_.isArray(req.body) ? 'insertMany' : 'insertOne']( req.body, function(err, result) {
-				if (err) {
-					return next(err); 
-				}
-				db.close();
-				next();
-			});
-		});
+	return _.bind(function(req, res, next) {		
+		this._db.collection( collection )[_.isArray(req.body) ? 'insertMany' : 'insertOne']( req.body, next );
 	}, this);
 };
 
 ConnectWrapper.prototype.update = function( collection ) {
-	return _.bind(function(req, res, next) {
-		
-		MongoClient.connect( this.url, function(err, db) {
-			if (err) {
-				return next(err);
-			}			
-			db.collection( collection ).updateOne( {_id: req.params.id}, {$set: req.query}, function(err, result) {
-				if (err) {
-					return next(err);
-				}
-				db.close();
-				next(null, result);
-			});
-		});
+	var now = Date.now();
+	return _.bind(function(req, res, next) {		
+		this._db.collection( collection ).updateOne( {_id: req.params.id}, {$set: req.query}, next);
 	}, this);
 };
 
 ConnectWrapper.prototype.read = function( collection ) {
 	return _.bind(function(req, res, next) {
 		
-		MongoClient.connect( this.url, function(err, db) {
-			var query
-			, limit = (req.query && req.query.limit) || 0
-			, $project = req.$project || {};
-			
-			if (err) {
-				return next(err);
-			}
-			
-			if (req.param && req.params.id) {
-				db.collection( collection ).findOne( req.params.id, function(err, result) {
-					if (err) {
-						return next(err);
-					}
-					db.close();
-					next();
-				})
-			} else if ((req.method || 'GET').toUpperCase() === 'GET') {
-				query = req.query;
-			} else {
-				query = req.body;
-			}
-			
-			if (limit) {
-				limit = parseInt( query.limit, 10);	
-				delete query.limit;		
-			}
-			db.collection( collection ).find( query || {}).limit( limit ).project( $project ).toArray(function(err, result) {
-				if (err) {
-					return next(err);
-				}
-				db.close();
-				next( null, result );
-			});
-		});
+		var query
+		, limit = (req.query && req.query.limit) || 0
+		, $project = req.$project || {}
+		
+		if (req.param && req.params.id) {
+			this._db.collection( collection ).findOne( req.params.id, next )
+		} else if ((req.method || 'GET').toUpperCase() === 'GET') {
+			query = req.query;
+		} else {
+			query = req.body;
+		}
+		
+		if (limit) {
+			limit = parseInt( query.limit, 10);	
+			delete query.limit;		
+		}
+		this._db.collection( collection ).find( query || {}).limit( limit ).project( $project ).toArray( next );
 	}, this);
 };
 
 ConnectWrapper.prototype.readAll = function( collection ) {
 	return _.bind(function(req, res, next) {
-		
-		MongoClient.connect( this.url, function(err, db) {
-			if (err) {
-				return next(err);
-			}
-			db.collection( collection ).findOne( req.query, function(err, result) {
-				if (err) {
-					return next(err);
-				}
-				db.close();
-				next();
-			})
-		});
+		this._db.collection( collection ).findOne( req.query, next );
 	}, this);
 };
 
 ConnectWrapper.prototype.drop = function( collection ) {
 	return _.bind(function(req, res, next) {
-		
-		MongoClient.connect( this.url, function(err, db) {
-			if (err) {
-				return next(err);
-			}
-			db.collection( collection ).drop( function(err, result) {
-				db.close();
-				if (err) {
-					return next(err, {statusCode: 400, error: err.name, reason: err.message});
-				}
-				next();
-			});
-		});
+		this._db.collection( collection ).drop( next );
 	}, this);
 };
 
 ConnectWrapper.prototype.view = function( collection ) {
-	return _.bind(function(req, res, next) {
-		
-		MongoClient.connect( this.url, function(err, db) {
-			if (err) {
-				return next(err);
-			}
-			db.collection( collection ).createIndex(req.body, function(err, result) {
-				if (err) {
-					return next(err);
-				}
-				db.close();
-				next();
-			});
-		});
+	return _.bind(function(req, res, next) {		
+		this._db.collection( collection ).createIndex(req.body, next );
 	}, this);
 };
 
