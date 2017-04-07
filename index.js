@@ -7,7 +7,7 @@ var MongoClient = require('mongodb').MongoClient;
 var assert = require('assert');
 var pool = {};
 
-var ConnectWrapper = function(auth, uri_template) {
+var ConnectWrapper = function(auth, uri_template, collection_prefix) {
 	auth = auth ? auth.split(' ') : '';   
     var plain_auth = new Buffer(auth[1], 'base64'); 			// create a buffer and tell it the data coming in is base64
     
@@ -26,6 +26,9 @@ var ConnectWrapper = function(auth, uri_template) {
 			delete pool[plain_auth[0]];
 		}
 	}
+	
+	// allow multiple logical databases within 1 physical;
+	this._collection_prefix = collection_prefix ? collection_prefix + ':' : '';
 	
 	// this.url = MONGO_URI
 	return this;
@@ -51,19 +54,21 @@ ConnectWrapper.prototype.auth = function(req, res, next) {
 };
 
 ConnectWrapper.prototype.create = function( collection ) {
+	collection = this._collection_prefix + collection;
 	return _.bind(function(req, res, next) {		
 		this._db.collection( collection )[_.isArray(req.body) ? 'insertMany' : 'insertOne']( req.body, next );
 	}, this);
 };
 
 ConnectWrapper.prototype.update = function( collection ) {
-	var now = Date.now();
+	collection = this._collection_prefix + collection;
 	return _.bind(function(req, res, next) {		
 		this._db.collection( collection ).updateOne( {_id: req.params.id}, {$set: req.query}, next);
 	}, this);
 };
 
 ConnectWrapper.prototype.read = function( collection ) {
+	collection = this._collection_prefix + collection;
 	return _.bind(function(req, res, next) {
 		
 		var query
@@ -87,26 +92,29 @@ ConnectWrapper.prototype.read = function( collection ) {
 };
 
 ConnectWrapper.prototype.readAll = function( collection ) {
+	collection = this._collection_prefix + collection;
 	return _.bind(function(req, res, next) {
 		this._db.collection( collection ).findOne( req.query, next );
 	}, this);
 };
 
 ConnectWrapper.prototype.drop = function( collection ) {
+	collection = this._collection_prefix + collection;
 	return _.bind(function(req, res, next) {
-		this._db.collection( collection ).drop( next );
+		this._db.collection( collection ).drop( function() { next.apply(null, arguments); } );
 	}, this);
 };
 
 ConnectWrapper.prototype.view = function( collection ) {
+	collection = this._collection_prefix + collection;
 	return _.bind(function(req, res, next) {		
 		this._db.collection( collection ).createIndex(req.body, next );
 	}, this);
 };
 
 
-exports.connectWrapper = function(auth, URI) {
-	return new ConnectWrapper(auth, URI);
+exports.connectWrapper = function(auth, URI, prefix) {
+	return new ConnectWrapper(auth, URI, prefix);
 };
 exports.ConnectWrapper = ConnectWrapper;
 
