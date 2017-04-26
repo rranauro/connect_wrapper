@@ -76,7 +76,7 @@ ConnectWrapper.prototype.read = function( collection ) {
 		, $project = req.$project || {}
 		
 		if (req.param && req.params.id) {
-			this._db.collection( collection ).findOne( req.params.id, next )
+			this._db.collection( collection ).findOne( {_id: req.params.id}, next )
 		} else if ((req.method || 'GET').toUpperCase() === 'GET') {
 			query = req.query;
 		} else {
