@@ -62,8 +62,15 @@ ConnectWrapper.prototype.create = function( collection ) {
 
 ConnectWrapper.prototype.update = function( collection ) {
 	collection = this._collection_prefix + collection;
-	return _.bind(function(req, res, next) {		
-		this._db.collection( collection ).updateOne( {_id: req.params.id}, {$set: req.query}, next);
+	return _.bind(function(req, res, next) {
+		var data;
+		
+		if (_.keys(req.body)) {
+			data = req.body;
+		} else {
+			data = req.query;
+		}
+		this._db.collection( collection ).updateOne( {_id: req.params.id}, {$set: data || {}}, next);
 	}, this);
 };
 
