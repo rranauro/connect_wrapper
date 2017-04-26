@@ -82,7 +82,7 @@ ConnectWrapper.prototype.read = function( collection ) {
 		, limit = (req.query && req.query.limit) || 0
 		, $project = req.$project || {}
 		
-		if (req.param && req.params.id) {
+		if (req.params && req.params.id) {
 			return this._db.collection( collection ).findOne( {_id: req.params.id}, next )
 		} 
 		
