@@ -65,7 +65,7 @@ ConnectWrapper.prototype.update = function( collection ) {
 	return _.bind(function(req, res, next) {
 		var data;
 		
-		if (_.keys(req.body)) {
+		if (_.keys(req.body).length) {
 			data = req.body;
 		} else {
 			data = req.query;
