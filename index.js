@@ -6,7 +6,7 @@ var _ = require('underscore')._
 var MongoClient = require('mongodb').MongoClient;
 var assert = require('assert');
 var pool = {};
-var uuidV1 = require('uuid/v1');
+var uuidV1 = require('uuid').v1;
 
 var ConnectWrapper = function(auth, uri_template, collection_prefix) {
 	auth = auth ? auth.split(' ') : '';   
