@@ -6,6 +6,7 @@ var _ = require('underscore')._
 var MongoClient = require('mongodb').MongoClient;
 var assert = require('assert');
 var pool = {};
+var uuidV1 = require('uuid/v1');
 
 var ConnectWrapper = function(auth, uri_template, collection_prefix) {
 	auth = auth ? auth.split(' ') : '';   
@@ -83,7 +84,7 @@ ConnectWrapper.prototype.authenticateUser = function(req, res, next) {
 	var password = require('password-hash-and-salt');
 	var self = this;
 	
-	this.read( 'users' )({params:{id: req.params.id}, query: req.query}, res, function(err, doc) {
+	this.read( 'users' )({params:{id: req.params.id}}, res, function(err, doc) {
 		if (err) return res.status( 404 ).json({error: err.name, message: err.message});
 		if (!doc) return res.status( 404 ).json({error: 'error', message: 'not_found'});
 		
@@ -100,7 +101,19 @@ ConnectWrapper.prototype.authenticateUser = function(req, res, next) {
 
 ConnectWrapper.prototype.create = function( collection ) {
 	collection = this._collection_prefix + collection;
-	return _.bind(function(req, res, next) {		
+	return _.bind(function(req, res, next) {	
+		
+		// We don't want to rely Mong's OID
+		if (_.isArray(req.body)) {
+			req.body = req.body.map(function(doc) {
+				if (!doc._id) {
+					doc._id = uuidV1();
+				}
+				return doc;
+			});
+		} else if (!req.body._id) {
+			req.body._id = uuidV1();
+		}
 		this._db.collection( collection )[_.isArray(req.body) ? 'insertMany' : 'insertOne']( req.body, next );
 	}, this);
 };
@@ -138,8 +151,8 @@ ConnectWrapper.prototype.read = function( collection ) {
 		
 		var query
 		, limit = (req.query && req.query.limit) || 0
-		, page = req.query.page
-		, pageSize = req.query.pageSize
+		, page = req.query && req.query.page
+		, pageSize = req.query && req.query.pageSize
 		, $project = req.$project || {}
 		
 		if (req.params && req.params.id) {

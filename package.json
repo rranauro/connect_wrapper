@@ -18,5 +18,8 @@
   "bugs": {
     "url": "https://github.com/rranauro/connect_wrapper/issues"
   },
-  "homepage": "https://github.com/rranauro/connect_wrapper#readme"
+  "homepage": "https://github.com/rranauro/connect_wrapper#readme",
+  "dependencies": {
+    "node-uuid": "^1.4.8"
+  }
 }
