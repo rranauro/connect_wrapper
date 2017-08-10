@@ -124,13 +124,11 @@ ConnectWrapper.prototype.update = function( collection ) {
 		var data;
 		var select = {_id: req.params && req.params.id};
 		
-		if (req.method === 'PUT') {
+		if (!req.params.id) {
 			select = req.body.select;
 			data = req.body.data;
-		} else if (req.method === 'POST') {
-			data = req.body;
 		} else {
-			data = req.query;
+			data = req.body || req.query;
 		}
 		this._db.collection( collection ).updateOne( select, {$set: data || {}}, next);
 
