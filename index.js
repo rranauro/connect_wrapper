@@ -122,13 +122,18 @@ ConnectWrapper.prototype.update = function( collection ) {
 	collection = this._collection_prefix + collection;
 	return _.bind(function(req, res, next) {
 		var data;
+		var select = {_id: req.params && req.params.id};
 		
-		if (_.keys(req.body).length) {
+		if (req.method === 'PUT') {
+			select = req.body.select;
+			data = req.body.data;
+		} else if (req.method === 'POST') {
 			data = req.body;
 		} else {
 			data = req.query;
 		}
-		this._db.collection( collection ).updateOne( {_id: req.params.id}, {$set: data || {}}, next);
+		this._db.collection( collection ).updateOne( select, {$set: data || {}}, next);
+
 	}, this);
 };
 
