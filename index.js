@@ -222,8 +222,15 @@ ConnectWrapper.prototype.view = function( collection ) {
 	}, this);
 };
 
-
-exports.connectWrapper = function(auth, URI, prefix) {
-	return new ConnectWrapper(auth, URI, prefix);
+var connectWrapper = function() {
+	var hash = {};
+	
+	return function(auth, URI, prefix) {
+		if (auth) {
+			hash[auth] = new ConnectWrapper(auth, URI, prefix);
+		}
+		return auth && hash[auth];
+	};
 };
+exports.connectWrapper = connectWrapper();
 exports.ConnectWrapper = ConnectWrapper;
