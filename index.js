@@ -22,11 +22,12 @@ var ConnectWrapper = function(auth, uri_template, collection_prefix) {
 		if (Date.now() - pool[plain_auth[0]].now < 600000) {
 			this._db = pool[plain_auth[0]].db;
 		} else if (pool[plain_auth[0]]) {
-			this._db && this._db.close();
-			delete this._db;
+			pool[plain_auth[0]].db && pool[plain_auth[0]].db.close();
 			delete pool[plain_auth[0]];
 		}
 	}
+
+
 	
 	// allow multiple logical databases within 1 physical;
 	this._collection_prefix = collection_prefix ? collection_prefix + ':' : '';
@@ -222,15 +223,8 @@ ConnectWrapper.prototype.view = function( collection ) {
 	}, this);
 };
 
-var connectWrapper = function() {
-	var hash = {};
-	
-	return function(auth, URI, prefix) {
-		if (auth) {
-			hash[auth] = new ConnectWrapper(auth, URI, prefix);
-		}
-		return auth && hash[auth];
-	};
+var connectWrapper = function(auth, URI, prefix) {
+        return new ConnectWrapper(auth, URI, prefix);
 };
-exports.connectWrapper = connectWrapper();
-exports.ConnectWrapper = ConnectWrapper;
+
+exports.connectWrapper = connectWrapper;
