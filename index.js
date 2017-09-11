@@ -128,8 +128,10 @@ ConnectWrapper.prototype.update = function( collection ) {
 		if (!req.params.id) {
 			select = req.body.select;
 			data = req.body.data;
+		} else if (_.keys(req.query || {}).length){
+			data = req.query;
 		} else {
-			data = req.body || req.query;
+			data = req.body;
 		}
 		this._db.collection( collection ).updateOne( select, {$set: data || {}}, next);
 
