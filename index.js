@@ -115,7 +115,18 @@ ConnectWrapper.prototype.create = function( collection ) {
 		} else if (!req.body._id) {
 			req.body._id = uuidV1();
 		}
-		this._db.collection( collection )[_.isArray(req.body) ? 'insertMany' : 'insertOne']( req.body, next );
+		
+		try {
+			
+			// don't quit on duplicate _id errors
+			this._db.collection( collection )[_.isArray(req.body) ? 'insertMany' : 'insertOne']( req.body, function(e,r) {
+				if (e) return next(null, {error: e.name, reason: e.message});
+				next.apply(null, arguments);
+			});
+		} catch(e) {
+			next(null, {error: e.name, reason: e.message});
+		}
+		
 	}, this);
 };
 
