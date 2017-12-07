@@ -7,6 +7,7 @@ var MongoClient = require('mongodb').MongoClient;
 var assert = require('assert');
 var pool = {};
 var uuidV1 = require('uuid').v1;
+var async = require('async');
 
 var ConnectWrapper = function(auth, uri_template, collection_prefix) {
 	auth = auth ? auth.split(' ') : '';   
@@ -103,6 +104,7 @@ ConnectWrapper.prototype.authenticateUser = function(req, res, next) {
 ConnectWrapper.prototype.create = function( collection ) {
 	collection = this._collection_prefix + collection;
 	return _.bind(function(req, res, next) {	
+		var options;
 		
 		// We don't want to rely Mong's OID
 		if (_.isArray(req.body)) {
@@ -112,14 +114,17 @@ ConnectWrapper.prototype.create = function( collection ) {
 				}
 				return doc;
 			});
+			options = _.defaults(req.options || {}, {ordered: false});
 		} else if (!req.body._id) {
 			req.body._id = uuidV1();
+			options = {};
 		}
+		
 		
 		try {
 			
 			// don't quit on duplicate _id errors
-			this._db.collection( collection )[_.isArray(req.body) ? 'insertMany' : 'insertOne']( req.body, function(e,r) {
+			this._db.collection( collection )[_.isArray(req.body) ? 'insertMany' : 'insertOne']( req.body, options, function(e,r) {
 				if (e) return next(null, {error: e.name, reason: e.message});
 				next.apply(null, arguments);
 			});
@@ -161,6 +166,48 @@ ConnectWrapper.prototype.count = function(collection) {
 			});
 	}, this);
 }
+
+ConnectWrapper.prototype.collection = function( collection ) {
+	collection = this._collection_prefix + collection;
+	return this._db.collection( collection );
+};
+
+ConnectWrapper.prototype.all_ids = function( collection ) {
+	collection = this._collection_prefix + collection;
+	return _.bind(function(req, res, next) {
+		this._db.collection(collection)
+		.find(req.query || {})
+		.project({_id:1})
+		.toArray(function(err, results) {
+			next(err, results.map(function(doc) { return doc._id; }));
+		})
+	}, this);
+};
+
+ConnectWrapper.prototype.bulkSave = function(collection) {
+	let _all_ids = this.all_ids( collection );
+	let _read = this.read( collection );
+	let _collection = collection;
+	
+	collection = this._collection_prefix + collection;
+	return _.bind(function(req, res, next) {
+		let size = req.query.size || 1000;
+		
+		_all_ids({}, null, function(err, ids) {
+			if (err) return next(err);
+			
+			// copy docs 1000 at a time
+			async.eachLimit(_.range(0, ids.length, size), 1, function(start, next) {
+				_read({query:{_id:{$in: ids.slice(start, start+size)}}}, null, 
+				function(err, docs) {
+					console.log('[bulkSave] info:', _collection, start, ids.length);
+					req.query.target.create(_collection)({body: docs}, null, next);
+				});
+			}, next);
+		});
+		
+	}, this);
+};
 
 ConnectWrapper.prototype.read = function( collection ) {
 	collection = this._collection_prefix + collection;
