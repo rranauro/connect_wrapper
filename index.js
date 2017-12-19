@@ -104,6 +104,7 @@ ConnectWrapper.prototype.authenticateUser = function(req, res, next) {
 ConnectWrapper.prototype.create = function( collection ) {
 	collection = this._collection_prefix + collection;
 	return _.bind(function(req, res, next) {	
+		var self = this;
 		var options;
 		
 		// We don't want to rely Mong's OID
@@ -120,14 +121,25 @@ ConnectWrapper.prototype.create = function( collection ) {
 			options = {};
 		}
 		
-		
 		try {
 			
-			// don't quit on duplicate _id errors
-			this._db.collection( collection )[_.isArray(req.body) ? 'insertMany' : 'insertOne']( req.body, options, function(e,r) {
-				if (e) return next(null, {error: e.name, reason: e.message});
-				next.apply(null, arguments);
-			});
+			if (_.isArray(req.body)) {
+				
+				// copy docs 1000 at a time
+				async.eachLimit(_.range(0, req.body.length, 10000), 1, function(start, go) {
+					console.log('[create] info:', collection, start, req.body.length);
+					self._db.collection( collection ).insertMany(req.body.slice(start, start+10000), options, go);
+				}, next);
+				
+			} else {
+
+				// don't quit on duplicate _id errors
+				this._db.collection( collection ).insertOne( req.body, options, function(e,r) {
+					if (e) return next(null, {error: e.name, reason: e.message});
+					next.apply(null, arguments);
+				});	
+			}
+		
 		} catch(e) {
 			next(null, {error: e.name, reason: e.message});
 		}
