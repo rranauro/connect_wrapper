@@ -126,10 +126,7 @@ ConnectWrapper.prototype.create = function( collection ) {
 				// copy docs 1000 at a time
 				async.eachLimit(_.range(0, req.body.length, 10000), 1, function(start, go) {
 					console.log('[create] info:', collection, start, req.body.length);
-					self._db.collection( collection ).insertMany(req.body.slice(start, start+10000), options, function(err, res) {
-						console.log('mongo', err, res);
-						go(err);
-					});
+					self._db.collection( collection ).insertMany(req.body.slice(start, start+10000), options, go);
 				}, next);
 				
 			} else {
