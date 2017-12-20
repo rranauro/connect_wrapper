@@ -18,17 +18,15 @@ var ConnectWrapper = function(auth, uri_template, collection_prefix) {
 		username: plain_auth[0],
 		password: plain_auth[1]
 	});
-	this._username = plain_auth[0];
-	if (pool[plain_auth[0]]) {
-		if (Date.now() - pool[plain_auth[0]].now < 600000) {
-			this._db = pool[plain_auth[0]].db;
-		} else if (pool[plain_auth[0]]) {
-			pool[plain_auth[0]].db && pool[plain_auth[0]].db.close();
-			delete pool[plain_auth[0]];
+	this._username = this.url;
+	if (pool[this._username]) {
+		if (Date.now() - pool[this._username].now < 600000) {
+			this._db = pool[this._username].db;
+		} else if (pool[this._username]) {
+			pool[this._username].db && pool[this._username].db.close();
+			delete pool[this._username];
 		}
 	}
-
-
 	
 	// allow multiple logical databases within 1 physical;
 	this._collection_prefix = collection_prefix ? collection_prefix + ':' : '';
@@ -128,7 +126,10 @@ ConnectWrapper.prototype.create = function( collection ) {
 				// copy docs 1000 at a time
 				async.eachLimit(_.range(0, req.body.length, 10000), 1, function(start, go) {
 					console.log('[create] info:', collection, start, req.body.length);
-					self._db.collection( collection ).insertMany(req.body.slice(start, start+10000), options, go);
+					self._db.collection( collection ).insertMany(req.body.slice(start, start+10000), options, function(err, res) {
+						console.log('mongo', err, res);
+						go(err);
+					});
 				}, next);
 				
 			} else {
