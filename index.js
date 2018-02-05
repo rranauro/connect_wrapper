@@ -10,6 +10,7 @@ var uuidV1 = require('uuid').v1;
 var async = require('async');
 
 var ConnectWrapper = function(auth, uri_template, collection_prefix) {
+	this._arguments = arguments;
 	auth = auth ? auth.split(' ') : '';   
     var plain_auth = new Buffer(auth[1], 'base64'); 			// create a buffer and tell it the data coming in is base64
     
@@ -33,6 +34,10 @@ var ConnectWrapper = function(auth, uri_template, collection_prefix) {
 	
 	// this.url = MONGO_URI
 	return this;
+};
+
+ConnectWrapper.prototype.noPrefix = function() {
+	return new ConnectWrapper( this._arguments[0], this._arguments[1] );
 };
 
 ConnectWrapper.prototype.auth = function(req, res, next) {
