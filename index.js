@@ -190,7 +190,7 @@ ConnectWrapper.prototype.collection = function( collection ) {
 ConnectWrapper.prototype.cursor = function( collection) {
 	let cursor = this.collection( collection );
 
-	return function(find, project, Fn, Final) {
+	return _.bind(function(find, project, Fn, Final) {
 		let limit = find.limit;
 		let docs = [];
 	
@@ -225,7 +225,7 @@ ConnectWrapper.prototype.cursor = function( collection) {
 				}
 			});				
 		});
-	}
+	}, this);
 };
 
 ConnectWrapper.prototype.all_ids = function( collection ) {
