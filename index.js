@@ -198,7 +198,7 @@ ConnectWrapper.prototype.cursor = function( collection) {
 			delete find.limit;
 		}		
 	
-		this._db.collection(collection).count(find, null, function(err, count) {
+		this.collection(collection).count(find, null, function(err, count) {
 
 			console.log('[cursor] info: entries', count);
 			if (!count || count === limit) {
