@@ -187,6 +187,47 @@ ConnectWrapper.prototype.collection = function( collection ) {
 	return this._db.collection( collection );
 };
 
+ConnectWrapper.prototype.cursor = function( collection) {
+	let cursor = this.collection( collection );
+
+	return function(find, project, Fn, Final) {
+		let limit = find.limit;
+		let docs = [];
+	
+		if (limit) {
+			delete find.limit;
+		}		
+	
+		db.collection(collection).count(find, null, function(err, count) {
+
+			console.log('[cursor] info: entries', count);
+			if (!count || count === limit) {
+				return Final( [] );
+			}
+			limit = limit || count;
+			cursor.find( find ).project( project ).forEach(function(doc) {
+				count -= 1;
+			
+				if (limit) {
+					doc = Fn( doc );
+					if (doc) {
+						docs.push( doc );
+					}
+			
+					if (!(count % 10000)) {
+						console.log('[cursor] info: Remaining', count, _.memory());
+					}					
+					limit -= 1;
+				}
+			
+				if (!count) {
+					return Final( docs );
+				}
+			});				
+		});
+	}
+};
+
 ConnectWrapper.prototype.all_ids = function( collection ) {
 	collection = this._collection_prefix + collection;
 	return _.bind(function(req, res, next) {
