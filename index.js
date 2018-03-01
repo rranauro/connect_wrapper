@@ -130,7 +130,7 @@ ConnectWrapper.prototype.create = function( collection ) {
 				
 				// copy docs 1000 at a time
 				async.eachLimit(_.range(0, req.body.length, 10000), 1, function(start, go) {
-					console.log('[create] info:', collection, start, req.body.length);
+					if (req.body.length > 100) console.log('[create] info:', collection, start, req.body.length);
 					self._db.collection( collection ).insertMany(req.body.slice(start, start+10000), options, go);
 				}, next);
 				
