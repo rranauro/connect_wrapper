@@ -161,7 +161,7 @@ ConnectWrapper.prototype.update = function( collection ) {
 		var data;
 		var select = {_id: req.params && req.params.id};
 		
-		if (!req.params.id) {
+		if (!(req.params && req.params.id)) {
 			select = req.body.select;
 			data = req.body.data;
 		} else if (_.keys(req.query || {}).length){
