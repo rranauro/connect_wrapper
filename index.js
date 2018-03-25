@@ -207,7 +207,7 @@ ConnectWrapper.prototype.cursor = function( collection) {
 
 			console.log('[cursor] info: entries', count);
 			if (!count || count === limit) {
-				return Final( [] );
+				return Final( docs );
 			}
 			limit = limit || count;
 			cursor.find( find ).project( project ).forEach(function(doc) {
