@@ -268,12 +268,12 @@ ConnectWrapper.prototype.bulkSave = function(collection1, collection2) {
 			// copy docs 1000 at a time
 			console.log('[bulkSave] info:', collection2, ids.length);
 			async.eachLimit(_.range(0, ids.length, size), 1, function(start, next) {
-				console.log('[bulkSave] info:', start+size, ids.length);
+				console.log('[bulkSave] info:', start, ids.length);
 				read({query:{_id:{$in: ids.slice(start, start+size)}}}, null, 
-				function(err, docs) {					
-					req.query.target._db.insertMany(docs.slice(start, start+10000), function(err) {
+				function(err, docs) {	
+					req.query.target.collection( collection2 ).insertMany(docs, function(err) {
 						if (err) {
-							console.log('[connect_wrapper/create] warning: error', err.errmsg, err.code);
+							console.log('[connect_wrapper/bulkSave] warning: error', err.message);
 						}
 						next();
 					});
