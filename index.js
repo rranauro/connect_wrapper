@@ -192,6 +192,14 @@ ConnectWrapper.prototype.collection = function( collection ) {
 	return this._db.collection( collection );
 };
 
+ConnectWrapper.prototype.collectionName = function( collection ) {
+	return this._collection_prefix + collection;
+};
+
+ConnectWrapper.prototype.collectionPrefix = function() {
+	return this._collection_prefix;
+};
+
 ConnectWrapper.prototype.cursor = function( collection) {
 	let cursor = this.collection( collection );
 
@@ -234,7 +242,6 @@ ConnectWrapper.prototype.cursor = function( collection) {
 };
 
 ConnectWrapper.prototype.all_ids = function( collection ) {
-	collection = this._collection_prefix + collection;
 	return _.bind(function(req, res, next) {
 		this._db.collection(collection)
 		.find(req.query || {})
@@ -245,24 +252,22 @@ ConnectWrapper.prototype.all_ids = function( collection ) {
 	}, this);
 };
 
-ConnectWrapper.prototype.bulkSave = function(collection) {
-	let _all_ids = this.all_ids( collection );
-	let _read = this.read( collection );
-	let _collection = collection;
+ConnectWrapper.prototype.bulkSave = function(collection1, collection2) {
+	let all_ids = this.all_ids( collection1 );
+	let read = this.noPrefix().read( collection1 );
 	
-	collection = this._collection_prefix + collection;
 	return _.bind(function(req, res, next) {
 		let size = req.query.size || 1000;
 		
-		_all_ids({}, null, function(err, ids) {
+		all_ids({}, null, function(err, ids) {
 			if (err) return next(err);
 			
 			// copy docs 1000 at a time
 			async.eachLimit(_.range(0, ids.length, size), 1, function(start, next) {
-				_read({query:{_id:{$in: ids.slice(start, start+size)}}}, null, 
+				read({query:{_id:{$in: ids.slice(start, start+size)}}}, null, 
 				function(err, docs) {
-					console.log('[bulkSave] info:', _collection, start, ids.length);
-					req.query.target.create(_collection)({body: docs}, null, next);
+					console.log('[bulkSave] info:', collection2, start, ids.length);
+					req.query.target.create( collection2 )({body: docs}, null, next);
 				});
 			}, next);
 		});
