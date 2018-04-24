@@ -271,7 +271,7 @@ ConnectWrapper.prototype.bulkSave = function(collection1, collection2) {
 				console.log('[bulkSave] info:', start+size, ids.length);
 				read({query:{_id:{$in: ids.slice(start, start+size)}}}, null, 
 				function(err, docs) {					
-					req.query.target._db.insertMany(req.body.slice(start, start+10000), function(err) {
+					req.query.target._db.insertMany(docs.slice(start, start+10000), function(err) {
 						if (err) {
 							console.log('[connect_wrapper/create] warning: error', err.errmsg, err.code);
 						}
