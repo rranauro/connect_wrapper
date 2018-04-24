@@ -247,7 +247,7 @@ ConnectWrapper.prototype.all_ids = function( collection ) {
 		.find(req.query || {})
 		.project({_id:1})
 		.toArray(function(err, results) {
-			next(err, results.map(function(doc) { return doc._id; }));
+			next(err, results ? results.map(function(doc) { return doc._id; }) : []);
 		})
 	}, this);
 };
@@ -260,13 +260,16 @@ ConnectWrapper.prototype.bulkSave = function(collection1, collection2) {
 		let size = req.query.size || 1000;
 		
 		all_ids({}, null, function(err, ids) {
-			if (err) return next(err);
+			if (err) {
+				console.log('[bulkSave] error: ', err.message);
+				return next(err);
+			}
 			
 			// copy docs 1000 at a time
+			console.log('[bulkSave] info:', collection2, ids.length);
 			async.eachLimit(_.range(0, ids.length, size), 1, function(start, next) {
 				read({query:{_id:{$in: ids.slice(start, start+size)}}}, null, 
 				function(err, docs) {
-					console.log('[bulkSave] info:', collection2, start, ids.length);
 					req.query.target.create( collection2 )({body: docs}, null, next);
 				});
 			}, next);
