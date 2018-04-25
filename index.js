@@ -270,7 +270,6 @@ ConnectWrapper.prototype.bulkSave = function(collection1, collection2) {
 			async.eachLimit(_.range(0, ids.length, size), 1, function(start, next) {
 				console.log('[bulkSave] info:', start, ids.length);
 				self._db.collection( collection1 ).find({_id:{$in: ids.slice(start, start+size)}}).toArray(function(err, docs) {	
-					console.log(err, docs && docs.length);
 					req.query.target._db.collection( collection2 ).insertMany(docs, function(err) {
 						if (err) {
 							console.log('[connect_wrapper/bulkSave] warning: error', err.message);
