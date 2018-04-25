@@ -31,6 +31,7 @@ var ConnectWrapper = function(auth, uri_template, collection_prefix) {
 	
 	// allow multiple logical databases within 1 physical;
 	this._collection_prefix = collection_prefix ? collection_prefix + ':' : '';
+	this._connection_id = uuidV1();
 	
 	// this.url = MONGO_URI
 	return this;
@@ -268,7 +269,7 @@ ConnectWrapper.prototype.bulkSave = function(collection1, collection2) {
 			console.log('[bulkSave] info:', collection2, ids.length);
 			async.eachLimit(_.range(0, ids.length, size), 1, function(start, next) {
 				console.log('[bulkSave] info:', start, ids.length);
-				self.collection( collection1 ).find({_id:{$in: ids.slice(start, start+size)}}).toArray(function(err, docs) {	
+				self._db.find({_id:{$in: ids.slice(start, start+size)}}).toArray(function(err, docs) {	
 					console.log(err, docs && docs.length);
 					req.query.target.collection( collection2 ).insertMany(docs, function(err) {
 						if (err) {
