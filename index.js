@@ -55,6 +55,7 @@ ConnectWrapper.prototype.auth = function(req, res, next) {
 			next();
 		});
 	} else {
+		pool[self._username].now = Date.now();
 		process.nextTick( function() { next(); });
 	}
 	return this;
@@ -270,6 +271,7 @@ ConnectWrapper.prototype.bulkSave = function(collection1, collection2) {
 			async.eachLimit(_.range(0, ids.length, size), 1, function(start, next) {
 				console.log('[bulkSave] info:', start, ids.length);
 				self._db.collection( collection1 ).find({_id:{$in: ids.slice(start, start+size)}}).toArray(function(err, docs) {	
+					console.log(err, docs && docs.length);
 					req.query.target._db.collection( collection2 ).insertMany(docs, function(err) {
 						if (err) {
 							console.log('[connect_wrapper/bulkSave] warning: error', err.message);
@@ -346,6 +348,9 @@ ConnectWrapper.prototype.deleteOne = function( collection ) {
 ConnectWrapper.prototype.drop = function( collection ) {
 	collection = this._collection_prefix + collection;
 	return _.bind(function(req, res, next) {
+		if (!this._db) {
+			return next({error: 'missing database', message: 'database not available'});
+		}
 		this._db.collection( collection ).drop( function() { next.apply(null, arguments); } );
 	}, this);
 };
