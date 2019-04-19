@@ -146,7 +146,7 @@ ConnectWrapper.prototype.createQueue = function( collection, limit ) {
 	}, 1);
 	
 	return {
-		push: queue.push,
+		push: _.bind(queue.push, queue),
 		flush: _.bind(flush, this)
 	};
 };
