@@ -10,7 +10,7 @@ var uuidV1 = require('uuid').v1;
 var async = require('async');
 
 var ConnectWrapper = function(auth, uri_template, collection_prefix) {
-	this._arguments = arguments;
+	this._arguments = _.toArray( arguments ).slice(0);
 	auth = auth ? auth.split(' ') : '';   
     var plain_auth = new Buffer(auth[1], 'base64'); 			// create a buffer and tell it the data coming in is base64
     
@@ -35,6 +35,10 @@ var ConnectWrapper = function(auth, uri_template, collection_prefix) {
 	
 	// this.url = MONGO_URI
 	return this;
+};
+
+ConnectWrapper.prototype.renew = function(callback) {
+	exports.connectWrapper.apply(this, this._arguments ).auth(null, null, callback);
 };
 
 ConnectWrapper.prototype.noPrefix = function() {
@@ -106,6 +110,46 @@ ConnectWrapper.prototype.authenticateUser = function(req, res, next) {
 	});
 };
 
+ConnectWrapper.prototype.createQueue = function( collection, limit ) {
+	let self = this;
+	
+	limit = limit || 10000;
+	collection = this._collection_prefix + collection;
+	let docs_to_save = [];
+	let saveDocs = this.create( collection );
+	let flush = function(next) {
+		let self = this;
+		
+		this.renew(function(err) {
+			if (err) throw new Error('[ConnectWrapper] fatal: failed to renew.', err && err.message);
+			
+			self.create( collection )({body: docs_to_save.slice(0)}, null, next);
+			docs_to_save.length = 0;
+		});		
+	};
+	let queue = async.queue(function(docs, next) {
+		
+		if (_.isArray(docs)) {
+			docs_to_save = docs_to_save.concat( docs )
+		} else {
+			docs_to_save.push( docs );
+		}
+		
+		if (docs_to_save.length > limit) {
+			return flush.call(self, next);
+		}
+		
+		// wait 1/100 second before callback.
+		setTimeout(next, 10);
+		
+	}, 1);
+	
+	return {
+		push: queue.push,
+		flush: _.bind(flush, this)
+	};
+};
+
 ConnectWrapper.prototype.create = function( collection ) {
 	collection = this._collection_prefix + collection;
 	return _.bind(function(req, res, next) {	
@@ -132,14 +176,15 @@ ConnectWrapper.prototype.create = function( collection ) {
 				
 				// copy docs 1000 at a time
 				async.eachLimit(_.range(0, req.body.length, 10000), 1, function(start, go) {
-					if (req.body.length > 100) console.log('[create] info:', collection, start, req.body.length);
 					self._db.collection( collection ).insertMany(req.body.slice(start, start+10000), options, function(err) {
 						if (err) {
 							console.log('[connect_wrapper/create] warning: error', err.errmsg, err.code);
 						}
 						go();
 					});
-				}, next);
+				}, function() {
+					console.log('[ConnectWrapper] info: saved', collection, req.body.length);
+				});
 				
 			} else {
 
