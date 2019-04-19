@@ -126,6 +126,7 @@ ConnectWrapper.prototype.createQueue = function( collection, limit ) {
 			
 			self.create( originalCollection )({body: docs_to_save.slice(0)}, null, function(){});
 			docs_to_save.length = 0;
+			next();
 		});		
 	};
 	let queue = async.queue(function(docs, next) {
@@ -185,6 +186,7 @@ ConnectWrapper.prototype.create = function( collection ) {
 					});
 				}, function() {
 					console.log('[ConnectWrapper] info: saved', collection, req.body.length);
+					next();
 				});
 				
 			} else {
