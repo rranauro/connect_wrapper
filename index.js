@@ -111,6 +111,7 @@ ConnectWrapper.prototype.authenticateUser = function(req, res, next) {
 };
 
 ConnectWrapper.prototype.createQueue = function( collection, limit ) {
+	let originalCollection = collection;
 	let self = this;
 	
 	limit = limit || 10000;
@@ -123,7 +124,7 @@ ConnectWrapper.prototype.createQueue = function( collection, limit ) {
 		this.renew(function(err) {
 			if (err) throw new Error('[ConnectWrapper] fatal: failed to renew.', err && err.message);
 			
-			self.create( collection )({body: docs_to_save.slice(0)}, null, function(){});
+			self.create( originalCollection )({body: docs_to_save.slice(0)}, null, function(){});
 			docs_to_save.length = 0;
 		});		
 	};
