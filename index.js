@@ -138,7 +138,7 @@ ConnectWrapper.prototype.createQueue = function( collection, limit ) {
 		}
 		
 		if (docs_to_save.length > limit) {
-			return flush.call(self);
+			return flush.call(self, next);
 		}
 		
 		// wait 1/100 second before callback.
