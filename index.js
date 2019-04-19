@@ -123,7 +123,7 @@ ConnectWrapper.prototype.createQueue = function( collection, limit ) {
 		this.renew(function(err) {
 			if (err) throw new Error('[ConnectWrapper] fatal: failed to renew.', err && err.message);
 			
-			self.create( collection )({body: docs_to_save.slice(0)}, null, next);
+			self.create( collection )({body: docs_to_save.slice(0)}, null, function(){});
 			docs_to_save.length = 0;
 		});		
 	};
@@ -136,7 +136,7 @@ ConnectWrapper.prototype.createQueue = function( collection, limit ) {
 		}
 		
 		if (docs_to_save.length > limit) {
-			return flush.call(self, next);
+			return flush.call(self);
 		}
 		
 		// wait 1/100 second before callback.
