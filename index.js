@@ -180,7 +180,7 @@ ConnectWrapper.prototype.create = function( collection ) {
 				async.eachLimit(_.range(0, req.body.length, 10000), 1, function(start, go) {
 					self._db.collection( collection ).insertMany(req.body.slice(start, start+10000), options, function(err) {
 						if (err) {
-							console.log('[connect_wrapper/create] warning: error', err.errmsg, err.code);
+							console.log('[connect_wrapper/create] warning: error', (err && err.message) || err);
 						}
 						go();
 					});
