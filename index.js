@@ -20,14 +20,9 @@ var ConnectWrapper = function(auth, uri_template, collection_prefix) {
 		password: plain_auth[1]
 	});
 	this._username = this.url;
-	if (pool[this._username]) {
-		if (Date.now() - pool[this._username].now < 600000) {
-			this._db = pool[this._username].db;
-		} else if (pool[this._username]) {
-			pool[this._username].db && pool[this._username].db.close();
-			delete pool[this._username];
-		}
-	}
+	
+	// beware, this is undefined if not already "auth"
+	this._db = pool[this._username] ? pool[this._username].db : undefined;
 	
 	// allow multiple logical databases within 1 physical;
 	this._collection_prefix = collection_prefix ? collection_prefix + ':' : '';
@@ -38,7 +33,7 @@ var ConnectWrapper = function(auth, uri_template, collection_prefix) {
 };
 
 ConnectWrapper.prototype.renew = function(callback) {
-	exports.connectWrapper.apply(this, this._arguments ).auth(null, null, callback);
+	exports.connectWrapper.apply(null, this._arguments ).auth(null, null, callback);
 };
 
 ConnectWrapper.prototype.noPrefix = function() {
@@ -48,21 +43,34 @@ ConnectWrapper.prototype.noPrefix = function() {
 ConnectWrapper.prototype.auth = function(req, res, next) {
 	var self = this;
 	
+	if (!pool[this._username]) {
 
-	if (!this._db) {
-		MongoClient.connect( this.url, function(err, db) {
+		// initiate new connection
+		MongoClient.connect( this.url, {
+			poolSize: 10
+		}, function(err, db) {
 			if (err) {
 				return next(err);
 			}
 			self._db = db;
 			pool[self._username] = {now: Date.now(), db: db};
-			next();
+			setTimeout(next, 50);
 		});
-	} else {
+		
+		return this;
+	} 
+	
+	// Note: default socektTimeoutMS is 360000
+	if (Date.now() - pool[this._username].now < 300000) {
+		self._db = pool[this._username].db;
 		pool[self._username].now = Date.now();
-		process.nextTick( function() { next(); });
+		_.wait(.05, next);
+		return this;
 	}
-	return this;
+	
+	pool[this._username].db && pool[this._username].db.close();
+	delete pool[this._username];
+	return ConnectWrapper.prototype.auth.apply(self, arguments);
 };
 
 ConnectWrapper.prototype.createUser = function(req, res, next) {
