@@ -19,10 +19,9 @@ var ConnectWrapper = function(auth, uri_template, collection_prefix) {
 		username: plain_auth[0],
 		password: plain_auth[1]
 	});
-	this._username = this.url;
 	
 	// beware, this is undefined if not already "auth"
-	this._db = pool[this._username] ? pool[this._username].db : undefined;
+	this._db = pool[process.pid];
 	
 	// allow multiple logical databases within 1 physical;
 	this._collection_prefix = collection_prefix ? collection_prefix + ':' : '';
@@ -43,34 +42,24 @@ ConnectWrapper.prototype.noPrefix = function() {
 ConnectWrapper.prototype.auth = function(req, res, next) {
 	var self = this;
 	
-	if (!pool[this._username]) {
+	console.log('auth', typeof pool[process.pid], process.pid);
+	if (!pool[process.pid]) {
 
 		// initiate new connection
-		MongoClient.connect( this.url, {
-			poolSize: 10
-		}, function(err, db) {
+		MongoClient.connect( this.url, function(err, db) {
 			if (err) {
 				return next(err);
 			}
-			self._db = db;
-			pool[self._username] = {now: Date.now(), db: db};
+			pool[process.pid] = self._db = db;
+			console.log('connection fetched', process.pid);
 			setTimeout(next, 50);
 		});
-		
-		return this;
-	} 
-	
-	// Note: default socektTimeoutMS is 360000
-	if (Date.now() - pool[this._username].now < 300000) {
-		self._db = pool[this._username].db;
-		pool[self._username].now = Date.now();
-		setTimeout(next, 50);
-		return this;
+	} else {
+		self._db = pool[process.pid];
+		console.log('connection reused', process.pid);
+		setTimeout(next, 50);		
 	}
-	
-	pool[this._username].db && pool[this._username].db.close();
-	delete pool[this._username];
-	return ConnectWrapper.prototype.auth.apply(self, arguments);
+	return this;
 };
 
 ConnectWrapper.prototype.createUser = function(req, res, next) {
