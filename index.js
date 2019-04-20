@@ -21,7 +21,7 @@ var ConnectWrapper = function(auth, uri_template, collection_prefix) {
 	});
 	
 	// beware, this is undefined if not already "auth"
-	this._db = pool[process.pid];
+	this._db = pool[this.url];
 	
 	// allow multiple logical databases within 1 physical;
 	this._collection_prefix = collection_prefix ? collection_prefix + ':' : '';
@@ -42,21 +42,18 @@ ConnectWrapper.prototype.noPrefix = function() {
 ConnectWrapper.prototype.auth = function(req, res, next) {
 	var self = this;
 	
-	console.log('auth', typeof pool[process.pid], process.pid);
-	if (!pool[process.pid]) {
+	if (!pool[self.url]) {
 
 		// initiate new connection
 		MongoClient.connect( this.url, function(err, db) {
 			if (err) {
 				return next(err);
 			}
-			pool[process.pid] = self._db = db;
-			console.log('connection fetched', process.pid);
+			pool[self.url] = self._db = db;
 			setTimeout(next, 50);
 		});
 	} else {
-		self._db = pool[process.pid];
-		console.log('connection reused', process.pid);
+		self._db = pool[self.url];
 		setTimeout(next, 50);		
 	}
 	return this;
