@@ -64,7 +64,7 @@ ConnectWrapper.prototype.auth = function(req, res, next) {
 	if (Date.now() - pool[this._username].now < 300000) {
 		self._db = pool[this._username].db;
 		pool[self._username].now = Date.now();
-		_.wait(.05, next);
+		setTimeout(next, 50);
 		return this;
 	}
 	
