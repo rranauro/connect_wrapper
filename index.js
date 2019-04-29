@@ -125,7 +125,7 @@ ConnectWrapper.prototype.createQueue = function( collection, limit, update ) {
 					if (!(count % 1000)) console.log('[ConnectWrapper] info:', count, to_save.length);
 					count += 1;
 					self.collection( collection )
-					.updateOne({_id: doc._id}, {$set: doc.$set}, go);
+					.updateOne({_id: doc._id}, {$set: doc['$set']}, go);
 				}, function(err) {
 					console.log('[ConnectWrapper] info: updated', collection, to_save.length);
 					next();			
