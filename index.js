@@ -104,20 +104,33 @@ ConnectWrapper.prototype.authenticateUser = function(req, res, next) {
 	});
 };
 
-ConnectWrapper.prototype.createQueue = function( collection, limit ) {
+ConnectWrapper.prototype.createQueue = function( collection, limit, update ) {
 	let originalCollection = collection;
 	let self = this;
 	
-	limit = limit || 10000;
+	limit = _.isNumber(limit) ? (limit > 0 ? limit : 0) : 10000;
 	collection = this._collection_prefix + collection;
 	let docs_to_save = [];
-	let saveDocs = this.create( collection );
 	let flush = function(next) {
 		let self = this;
 		
 		this.renew(function(err) {
-			if (err) throw new Error('[ConnectWrapper] fatal: failed to renew.', err && err.message);
+			let to_save = docs_to_save.slice(0);
+			let count = 0;
 			
+			if (err) throw new Error('[ConnectWrapper] fatal: failed to renew.', err && err.message);
+			if (update) {
+				
+				return async.eachLimit(to_save, 2, function(doc, go) {
+					if (!(count % 1000)) console.log('[ConnectWrapper] info:', count, to_save.length);
+					count += 1;
+					self.collection( collection )
+					.updateOne({_id: doc._id}, {$set: doc.$set}, go);
+				}, function(err) {
+					console.log('[ConnectWrapper] info: updated', collection, to_save.length);
+					next();			
+				});
+			}
 			self.create( originalCollection )({body: docs_to_save.slice(0)}, null, function(){});
 			docs_to_save.length = 0;
 			next();
