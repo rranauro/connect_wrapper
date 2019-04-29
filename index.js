@@ -124,7 +124,7 @@ ConnectWrapper.prototype.createQueue = function( collection, limit, update ) {
 				return async.eachLimit(to_save, 2, function(doc, go) {
 					if (!(count % 1000)) console.log('[ConnectWrapper] info:', count, to_save.length);
 					count += 1;
-					self.collection( collection )
+					self.collection( originalCollection )
 					.findOneAndUpdate({_id: doc._id}, {$set: doc['$set']}, go);
 				}, function(err) {
 					console.log('[ConnectWrapper] info: updated', collection, to_save.length);
