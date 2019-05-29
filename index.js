@@ -128,7 +128,7 @@ ConnectWrapper.prototype.createQueue = function( collection, limit, update ) {
 		if (update) {
 
 			return self.collection( originalCollection )
-			.findOneAndUpdate({_id: docs._id}, {$set: docs['$set']}, options, next);
+			.findOneAndUpdate({_id: docs._id}, {$set: docs['$set']}, {upsert:true}, next);
 		}
 		
 		if (_.isArray(docs)) {
