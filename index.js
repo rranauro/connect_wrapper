@@ -144,7 +144,7 @@ ConnectWrapper.prototype.createQueue = function( collection, limit, update ) {
 			docs_to_save.push( docs );
 		}
 		
-		if (docs_to_save.length > limit) {
+		if (limit && docs_to_save.length > limit) {
 			return flush.call(self, next);
 		}
 		
@@ -154,7 +154,9 @@ ConnectWrapper.prototype.createQueue = function( collection, limit, update ) {
 	}, 1);
 	
 	return {
-		push: _.bind(queue.push, queue),
+		push: function(jobs, callback) {
+			queue.push( jobs, callback );
+		},
 		flush: _.bind(flush, this)
 	};
 };
