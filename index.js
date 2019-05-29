@@ -156,6 +156,7 @@ ConnectWrapper.prototype.createQueue = function( collection, limit, update ) {
 	return {
 		push: function(jobs, callback) {
 			queue.push( jobs, callback );
+			return this;
 		},
 		flush: _.bind(flush, this)
 	};
