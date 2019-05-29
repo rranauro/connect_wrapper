@@ -148,9 +148,9 @@ ConnectWrapper.prototype.createQueue = function( collection, limit, update ) {
 			return flush.call(self, next);
 		}
 		
-		// wait 1/100 second before callback.
-		setTimeout(next, 10);
-		
+		if (_.isFunction(next)) {
+			next();
+		}
 	}, 1);
 	
 	return {
