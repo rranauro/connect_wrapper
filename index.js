@@ -112,6 +112,7 @@ ConnectWrapper.prototype.createQueue = function( collection, limit, update ) {
 	collection = this._collection_prefix + collection;
 	let docs_to_save = [];
 	let flush = function(next) {
+		next = next || function(){};
 		let self = this;
 		
 		this.renew(function(err) {
