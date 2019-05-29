@@ -121,12 +121,16 @@ ConnectWrapper.prototype.createQueue = function( collection, limit, update ) {
 		options = _.defaults(options || {}, {upsert: false});
 		let to_save = docs_to_save.slice(0);
 		docs_to_save.length = 0;
+		count += to_save.length;
+		console.log('[createQueue] info: saving...', count)
 		self.create( originalCollection )({body: to_save}, null, next);
 	};
 	let queue = async.queue(function(docs, next) {
 		
 		if (update) {
 
+			if (!(count %1000)) console.log('[createQueue] info: updating...', count);
+			count += 1;
 			return self.collection( originalCollection )
 			.findOneAndUpdate({_id: docs._id}, {$set: docs['$set']}, {upsert:true}, next);
 		}
