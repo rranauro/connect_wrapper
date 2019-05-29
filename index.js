@@ -111,8 +111,13 @@ ConnectWrapper.prototype.createQueue = function( collection, limit, update ) {
 	limit = _.isNumber(limit) ? (limit > 0 ? limit : 0) : 10000;
 	collection = this._collection_prefix + collection;
 	let docs_to_save = [];
-	let flush = function(next) {
+	let flush = function(options, next) {
+		if (_.isFunction(options)) {
+			next = options;
+			options = {};
+		}
 		next = next || function(){};
+		options = _.defaults(options || {}, {upsert: false});
 		let self = this;
 		
 		this.renew(function(err) {
@@ -127,7 +132,7 @@ ConnectWrapper.prototype.createQueue = function( collection, limit, update ) {
 					if (!(count % 1000)) console.log('[ConnectWrapper] info:', count, to_save.length);
 					count += 1;
 					self.collection( originalCollection )
-					.findOneAndUpdate({_id: doc._id}, {$set: doc['$set']}, go);
+					.findOneAndUpdate({_id: doc._id}, {$set: doc['$set']}, options, go);
 				}, function(err) {
 					console.log('[ConnectWrapper] info: updated', collection, to_save.length);
 					next();			
