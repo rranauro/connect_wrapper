@@ -122,8 +122,11 @@ ConnectWrapper.prototype.createQueue = function( collection, limit, update ) {
 		let to_save = docs_to_save.slice(0);
 		docs_to_save.length = 0;
 		count += to_save.length;
-		console.log('[createQueue] info: saving...', count)
-		self.create( originalCollection )({body: to_save}, null, next);
+		if (to_save.length) {
+			console.log('[createQueue] info: saving...', count);
+			return self.create( originalCollection )({body: to_save}, null, next);			
+		}
+		return next();
 	};
 	let queue = async.queue(function(docs, next) {
 		
@@ -149,6 +152,10 @@ ConnectWrapper.prototype.createQueue = function( collection, limit, update ) {
 	}, update ? 2 : 1);
 	
 	return {
+		drain: function(fN) {
+			queue.drain = _.bind(fN, self);
+			return this;
+		},
 		push: function(jobs, callback) {
 			queue.push( jobs, callback );
 			return this;
