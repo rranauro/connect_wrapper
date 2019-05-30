@@ -150,7 +150,7 @@ ConnectWrapper.prototype.createQueue = function( collection, limit, update ) {
 		}
 		next();
 		
-	}, update ? 2 : 1);
+	}, update ? 4 : 1);
 	
 	return {
 		options: function(obj) {
