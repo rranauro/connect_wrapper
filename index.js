@@ -107,6 +107,7 @@ ConnectWrapper.prototype.authenticateUser = function(req, res, next) {
 ConnectWrapper.prototype.createQueue = function( collection, limit, update ) {
 	let originalCollection = collection;
 	let self = this;
+	self._options = {upsert:false}
 	
 	limit = _.isNumber(limit) ? (limit > 0 ? limit : 10000) : 10000;
 	collection = this._collection_prefix + collection;
@@ -135,7 +136,7 @@ ConnectWrapper.prototype.createQueue = function( collection, limit, update ) {
 			if (!(count %1000)) console.log('[createQueue] info: updating...', count);
 			count += 1;
 			return self.collection( originalCollection )
-			.findOneAndUpdate({_id: docs._id}, {$set: docs['$set']}, {upsert:true}, next);
+			.findOneAndUpdate({_id: docs._id}, {$set: docs['$set']}, self._options, next);
 		}
 		
 		if (_.isArray(docs)) {
@@ -152,6 +153,10 @@ ConnectWrapper.prototype.createQueue = function( collection, limit, update ) {
 	}, update ? 2 : 1);
 	
 	return {
+		options: function(obj) {
+			self._options = obj;
+			return this;
+		},
 		drain: function(fN) {
 			queue.drain = _.bind(fN, self);
 			return this;
