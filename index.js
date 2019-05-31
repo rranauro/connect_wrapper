@@ -135,6 +135,10 @@ ConnectWrapper.prototype.createQueue = function( collection, limit, update ) {
 
 			if (!(count %1000)) console.log('[createQueue] info: updating...', count);
 			count += 1;
+			
+			if (!docs.hasOwnProperty('$set')) {
+				docs['$set'] = _.omit(docs, '_id');
+			}
 			return self.collection( originalCollection )
 			.findOneAndUpdate({_id: docs._id}, {$set: docs['$set']}, self._options, next);
 		}
