@@ -124,7 +124,7 @@ ConnectWrapper.prototype.createQueue = function( collection, limit, update ) {
 		docs_to_save.length = 0;
 		count += to_save.length;
 		if (to_save.length) {
-			console.log('[createQueue] info: saving...', count);
+			console.log('[createQueue] info: saving...', to_save.length, count);
 			return self.create( originalCollection )({body: to_save}, null, next);			
 		}
 		return next();
