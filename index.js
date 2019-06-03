@@ -149,7 +149,7 @@ ConnectWrapper.prototype.createQueue = function( collection, limit, update ) {
 			docs_to_save.push( docs );
 		}
 		
-		if (limit && docs_to_save.length > limit) {
+		if (limit && docs_to_save.length >= limit) {
 			return flush.call(self, {}, next);
 		}
 		next();
