@@ -154,7 +154,7 @@ ConnectWrapper.prototype.createQueue = function( collection, limit, update ) {
 				flush.call(self, {}, next);
 			});
 		}
-		next();
+		return process.nextTick( next );
 		
 	}, update ? 4 : 1);
 	
